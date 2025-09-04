@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, setAuth } from '../api';
 import TaskItem from '../components/TaskItem';
 import WeatherCard from '../components/WeatherCard';
@@ -13,29 +13,45 @@ export default function Dashboard() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     setAuth(token);
-    api.get('/tasks').then(({ data }) => setTasks(data)).finally(() => setLoading(false));
+    api.get('/tasks')
+      .then(({ data }) => setTasks(data))
+      .finally(() => setLoading(false));
   }, []);
 
+  // Add a task
   async function addTask() {
     if (!text.trim()) return;
-    const payload = { title: text, time: new Date(Date.now() + 60*60*1000), status: 'Pending' };
+    const payload = { title: text, time: new Date(Date.now() + 60 * 60 * 1000), status: 'Pending' };
     const { data } = await api.post('/tasks', payload);
-    setTasks(t => [ ...t, data ]);
+    setTasks(t => [...t, data]);
     setText('');
   }
 
+  // Toggle status (Pending <-> Completed)
   async function toggleTask(task) {
     const newStatus = task.status === 'Pending' ? 'Completed' : 'Pending';
-    const { data } = await api.put(`/tasks/${task._id}`, { status: newStatus });
-    setTasks(ts => ts.map(t => t._id === task._id ? data : t));
+
+    // Optimistic UI update
+    setTasks(prev =>
+      prev.map(t => (t._id === task._id ? { ...t, status: newStatus } : t))
+    );
+
+    try {
+      const { data } = await api.put(`/tasks/${task._id}`, { status: newStatus });
+      setTasks(prev => prev.map(t => (t._id === task._id ? data : t)));
+    } catch (err) {
+      console.error('Failed to toggle task:', err);
+      setTasks(prev =>
+        prev.map(t => (t._id === task._id ? { ...t, status: task.status } : t))
+      );
+    }
   }
 
+  // Delete task only when Delete button clicked
   async function deleteTask(id) {
     await api.delete(`/tasks/${id}`);
     setTasks(ts => ts.filter(t => t._id !== id));
   }
-
-  const pending = useMemo(() => tasks.filter(t => t.status === 'Pending'), [tasks]);
 
   return (
     <div className="min-h-screen p-6">
@@ -47,17 +63,23 @@ export default function Dashboard() {
             <div className="card">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xl">⚠️</span>
-                <h2 className="font-bold text-xl">Pending tasks</h2>
+                <h2 className="font-bold text-xl">Tasks</h2>
               </div>
+
               <div className="space-y-2">
                 {loading ? (
                   <div>Loading...</div>
-                ) : pending.length ? (
-                  pending.map(t => (
-                    <TaskItem key={t._id} task={t} onToggle={toggleTask} onDelete={deleteTask} />
+                ) : tasks.length ? (
+                  tasks.map(t => (
+                    <TaskItem
+                      key={t._id}
+                      task={t}
+                      onToggle={toggleTask}
+                      onDelete={deleteTask}
+                    />
                   ))
                 ) : (
-                  <div className="text-sm opacity-70">No pending tasks</div>
+                  <div className="text-sm opacity-70">No tasks yet</div>
                 )}
               </div>
             </div>
@@ -67,7 +89,13 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2 card">
-          <input className="input" placeholder="Hey Bobo, remind me to..." value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter' && addTask()} />
+          <input
+            className="input"
+            placeholder="Hey Bobo, remind me to..."
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addTask()}
+          />
           <button className="btn bg-blue-200" onClick={addTask}>Add</button>
         </div>
 

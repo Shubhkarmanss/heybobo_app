@@ -19,16 +19,25 @@ router.post('/', auth, async (req, res) => {
 });
 
 // PUT /tasks/:id
-router.put('/:id', auth, async (req, res) => {
-  const { id } = req.params;
-  const { title, time, status } = req.body;
-  const updated = await Task.findOneAndUpdate(
-    { _id: id, user: req.userId },
-    { $set: { ...(title && { title }), ...(time && { time }), ...(status && { status }) } },
-    { new: true }
-  );
-  if (!updated) return res.status(404).json({ message: 'Task not found' });
-  res.json(updated);
+router.put("/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const updatedTask = await Task.findOneAndUpdate(
+      { _id: id, user: req.userId },
+      { status },
+      { new: true }
+    );
+
+    if (!updatedTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating task", error });
+  }
 });
 
 // DELETE /tasks/:id

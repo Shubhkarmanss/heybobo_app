@@ -10,11 +10,11 @@ export default function WeatherCard({ city = 'Delhi' }) {
 
   return (
     <div className="card flex items-center gap-4">
-      <div className="text-5xl">{data ? Math.round(data.main.temp) : '--'}°F</div>
+      <div className="text-5xl">{data ? Math.round(data.main.temp) : '--'}°C</div>
       <div className="text-sm">
         <div className="font-semibold">Air-Quality</div>
         <div>Alert</div>
-        <div className="mt-2 font-bold">AIOS</div>
+        <div className="mt-2 font-bold">DELHI</div>
       </div>
     </div>
   );
